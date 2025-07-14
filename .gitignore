@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.pyo
+*.pkl
+*.joblib
+*.log
+*.tmp
+*.swp
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# 环境/依赖
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+*.egg
+.Python
+
+# VSCode/Cursor
+.vscode/
+*.code-workspace
+
+# 数据/模型/输出
+results/
+models/
+predictions/
+images/
+cache/
+*.csv
+*.xlsx
+*.xls
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.sav
+*.dat
+*.db
+*.sqlite
+
+# 配置/密钥
+.env*
+*.yaml.backup
+
+# MacOS/Windows/Linux系统文件
+.DS_Store
+Thumbs.db
+~$*
+
+# 其他临时文件
+*.bak
+*.old
+*.orig
+*.rej
+*.out
+*.aux
+*.log
+*.toc
+*.pdf
+*.zip
+*.tar.gz
+*.tar
+*.gz
+*.rar
+*.7z 

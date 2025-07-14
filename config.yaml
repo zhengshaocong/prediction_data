@@ -1,0 +1,57 @@
+output_subdir: zsc
+
+# 数据配置
+data:
+  train_path: ./data/used_car_train_20200313.csv
+  test_path: ./data/used_car_testB_20200421.csv
+  preprocess_module: data/pre/feature_blocks.py  # 特征工程/预处理模块路径 
+  val_path: null
+
+# 输出目录配置
+output:
+  models_dir: models/
+  predictions_dir: predictions/
+  images_dir: images/
+
+
+# 预测属性配置
+prediction_column: price  # 预测的目标属性名，如 price 
+# 唯一ID属性配置
+id_column: SaleID  # 数据唯一ID字段名，如 SaleID 
+
+
+# 模型配置
+model:
+  type: xgboost  # 可选：xgboost, catboost, lightgbm, linear
+  params:
+    max_depth: [3, 5, 7]
+    learning_rate: [0.01, 0.05, 0.1]
+    n_estimators: [100, 200, 300]
+
+# 交叉验证配置
+cross_validation:
+  enabled: true
+  n_splits: 5
+
+# 分段建模配置
+segmentation:
+  enabled: false
+  segment_col: car_age
+  n_bins: 5
+
+# 脚本配置
+scripts:
+  # 主流程用到的模型和结果路径
+  segment_model_path: models/segment_model.pkl  # 分段建模模型保存路径
+  train_pred_path: predictions/train_pred.csv   # 训练集预测结果保存路径
+  feature_importance_path: images/feature_importance.png  # 特征重要性图保存路径
+
+# 特征工程配置
+features:
+  enable_print: false  # 控制是否显示print内容
+  top_n_features: null  # 特征选择数量，null表示使用所有特征
+
+# 缓存配置
+cache:
+  param_cache_path: ./cache/param_cache.json  # 参数调优缓存文件路径 
+
