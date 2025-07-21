@@ -1,10 +1,14 @@
-output_subdir: zsc
+feature_selection_mode: true  # 是否启用特征工程自动组合评测功能
+
+output_subdir: car  # 以模型为文件名
+auto_output_subdir: true  # 是否根据  模型类型 分段建模列 自动拼接output_subdir
 
 # 数据配置
 data:
-  train_path: ./data/used_car_train_20200313.csv
-  test_path: ./data/used_car_testB_20200421.csv
-  preprocess_module: data/pre/feature_blocks.py  # 特征工程/预处理模块路径 
+  train_path: ./data/car/used_car_train_20200313.csv
+  test_path: ./data/car/used_car_testB_20200421.csv
+  preprocess_module: data/car/pre/feature_blocks.py  # 特征工程/预处理模块路径 
+  clean_module: data/car/pre/clean_data.py  # 数据清洗模块路径
   val_path: null
 
 # 输出目录配置
@@ -22,15 +26,30 @@ id_column: SaleID  # 数据唯一ID字段名，如 SaleID
 
 # 模型配置
 model:
-  type: xgboost  # 可选：xgboost, catboost, lightgbm, linear
+  type: lightgbm  # 可选：xgboost, catboost, lightgbm
   params:
-    max_depth: [3, 5, 7]
-    learning_rate: [0.01, 0.05, 0.1]
-    n_estimators: [100, 200, 300]
+    common:
+      n_estimators: [100]  # 弱学习器（树）的数量
+      learning_rate: [0.2]  # 学习率，步长收缩系数
+      random_state: [42]
+    xgboost:
+      objective: ["reg:squarederror"]  # 目标函数，回归任务用'reg:squarederror'，二分类用'binary:logistic'
+      eval_metric: ["mae"]  # 评估指标，回归常用'rmse'/'mae'，二分类常用'auc'/'logloss'
+      max_depth: [10]  # 树的最大深度
+      colsample_bytree: [0.8]  # 每棵树随机采样的特征比例
+      subsample: [0.8]  # 每棵树随机采样的样本比例
+      alpha: [0.5]  # L1正则化系数
+      lambda: [1]  # L2正则化系数
+    lightgbm:
+      subsample_freq: [8]  # bagging的次数
+      num_leaves: [31]  # 一棵树上的最大叶子数
+    catboost:
+      depth: [6]  # 树的深度
+
 
 # 交叉验证配置
 cross_validation:
-  enabled: true
+  enabled: false
   n_splits: 5
 
 # 分段建模配置

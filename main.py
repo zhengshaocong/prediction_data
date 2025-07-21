@@ -8,21 +8,38 @@ from src import (
 )
 from src.models.utils.model_utils_tools import plot_feature_importance
 import importlib.util
+from src.utils.tools import check_and_get_feature_blocks
 
 def run_pipeline(config_path='./config.yaml'):
     # 加载配置
     config = load_config(config_path)
 
     # 动态加载特征工程模块
-    preprocess_module_path = config.get('preprocess_module')
+    preprocess_module_path = config['data'].get('preprocess_module')
     if preprocess_module_path:
         spec = importlib.util.spec_from_file_location('feature_blocks', preprocess_module_path)
         feature_blocks_mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(feature_blocks_mod)
         feature_engineer = feature_blocks_mod.default
+        FEATURE_BLOCKS = feature_blocks_mod.FEATURE_BLOCKS
+        # 检查最优特征组合
+        model_type = config['model']['type']
+        feature_blocks_to_use = check_and_get_feature_blocks(model_type, FEATURE_BLOCKS)
+        # 包装特征工程函数，确保只用指定组合
+        feature_engineer_func = lambda df, train_df=None: feature_engineer(df, train_df, feature_blocks=feature_blocks_to_use)
     else:
-        feature_engineer = None
-    
+        feature_engineer_func = None
+
+    # 动态加载数据清洗模块
+    clean_module_path = config['data'].get('clean_module')
+    if clean_module_path:
+        spec_clean = importlib.util.spec_from_file_location('clean_data', clean_module_path)
+        clean_data_mod = importlib.util.module_from_spec(spec_clean)
+        spec_clean.loader.exec_module(clean_data_mod)
+        clean_data = clean_data_mod.default
+    else:
+        raise ValueError("请在config.yaml中配置data.clean_module")
+
     # 确保输出目录存在
     ensure_directories(config)
     
@@ -36,18 +53,18 @@ def run_pipeline(config_path='./config.yaml'):
     df_test = pd.read_csv(config['data']['test_path'], sep=' ')
 
     # 3. 数据预处理
-    if feature_engineer is not None:
-        df_train = feature_engineer(df_train)
-        df_test = feature_engineer(df_test, train_df=df_train)
-    else:
-        df_train = preprocess_data(df_train)
-        df_test = preprocess_data(df_test, train_df=df_train)
+    df_train = preprocess_data(df_train, clean_data=clean_data, feature_engineer=feature_engineer_func)
+    df_test = preprocess_data(df_test, train_df=df_train, clean_data=clean_data, feature_engineer=feature_engineer_func)
+
+
+
     prediction_column = config.get('prediction_column', 'price')
     id_column = config.get('id_column', 'SaleID')
     feature_cols = [col for col in df_train.columns if col not in [id_column, prediction_column]]
     X = preprocess_features(df_train, feature_cols)
     y = df_train[prediction_column]
     X_test = preprocess_features(df_test, feature_cols)
+    X_test = X_test.loc[:, ~X_test.columns.duplicated()]
     X_test = X_test.reindex(columns=X.columns, fill_value=0)
     # 给 X 加上 config_output_images_dir 属性，供交叉验证流程使用
     X.config_output_images_dir = config['output']['images_dir']
@@ -85,7 +102,9 @@ def run_pipeline(config_path='./config.yaml'):
     if config['segmentation']['enabled']:
         segment_col = config['segmentation']['segment_col']
         n_bins = config['segmentation']['n_bins']
-        labels, bins = auto_bins(df_train[segment_col], n_bins=n_bins)
+        # 只用auto_bins返回bins
+        _, bins = auto_bins(df_train[segment_col], n_bins=n_bins)
+        labels = list(range(n_bins))
         seg_config = SegmentedRegressionConfig(
             params=train_config,
             segment_col=segment_col,
@@ -129,7 +148,7 @@ def run_pipeline(config_path='./config.yaml'):
             else:
                 print('当前模型不支持特征重要性图的生成。')
         else:
-            from src.regression_train_predict import regression_train_predict
+            from src.models.regression.regression_train_predict import regression_train_predict
             final_model, mae = regression_train_predict(train_config)
             print(f'全量训练MAE: {mae:.2f}')
             # 保存特征重要性图（如支持）
